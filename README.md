@@ -3,6 +3,8 @@ JSW2 Animated Map
 
 This project displays an Animated Jet Set willy map.
 
+![alt tag](http://robprobin.com/uploads/Main/JSW2Anim.png)
+
 Running
 -------
 I haven't yet created a distribution http://love2d.org/wiki/Game_Distribution so 
@@ -15,7 +17,7 @@ You need to download the relevant version of Love 2D http://www.love2d.org - we 
 Love 0.9.0. 
 
 On a Mac, to run it from Terminal type:
-    <<path-to-love>>/love.app/Contents/MacOS/love JSW2_Animated_Map.love 
+    path-to-love/love.app/Contents/MacOS/love JSW2_Animated_Map.love 
 
 On a Mac, you might be able to run it by clicking on the .love file - depending upon 
 whether you've downloaded and associated the right version of love.
@@ -25,7 +27,7 @@ On Windows, to run it by installing:
     2. Click the .love file.
 
 On Windows, to run it from the the command prompt type: 
-    <<path-to-love>>/love-0.9.0-win32/love.exe JSW2_Animated_Map.love 
+    path-to-love/love-0.9.0-win32/love.exe JSW2_Animated_Map.love 
 
 On Linux, to run it you should be able to install the relevant package, then click 
 JSW2_Animated_Map.love file.
