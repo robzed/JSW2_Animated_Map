@@ -1,0 +1,534 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="generator" content="HTML Tidy, see www.w3.org" />
+<title>Jet-Set Willy II Room Format v0.9.1</title>
+<link rel="stylesheet" href="../main.css" type="text/css" />
+<link rel="stylesheet" href="jsw.css" type="text/css" />
+</head>
+<body bgcolor="#FFFFFF">
+<div class="fixedbanner"><img src="../Images/jsw.xbm" alt=""
+align="MIDDLE" width="32" height="32" /> Jet Set Willy<br />
+<a href="../index.html">Home</a> -&gt; <a href="index.html">Jet Set
+Willy 128</a> -&gt; <a href="jsw.html">JSW technical
+information</a> -&gt; Jet Set Willy 2 Room Format 
+
+<p><img src="../Images/zx-hline3.png"
+alt="_____________________________________________________________________"
+ width="100%" height="4" /></p>
+</div>
+
+<div class="main">
+<h1>Jet-Set Willy II Room Format</h1>
+
+<h2>Version 0.9.1: 10 December 2005</h2>
+
+<h3>by John Elliott</h3>
+
+<p><strong>Disclaimer:</strong> I do not guarantee this information
+to be correct. This is my best guess at what is going on inside JSW
+II, after wandering around inside it with a disassembler.</p>
+
+<p>New for v0.9.1: More notes on CPC versions.</p>
+
+<p>New for v0.9: Some notes on the room format used by CPC6128 JSW, upon
+which JSW2 is based.</p>
+
+<p>New for v0.8: Some more details on lifts.</p>
+
+<p>New for v0.7: Added the title screen and music formats.</p>
+
+<p>New for v0.6: Added various game engine limits.</p>
+
+<p>New for v0.5: Corrected various guardian values.</p>
+
+<p>New for v0.4: More corrections from Andrew Cadley.</p>
+
+<p>New for v0.3: Andrew Cadley has supplied details of the T4, CG0
+and CG1 bytes.</p>
+
+<h2><a id="1" name="1">1. Terminology</a></h2>
+
+<p>Unless otherwise specified, this document refers to the Spectrum version
+of JSW2. Notes of differences in the CPC implementations of JSW1 and JSW2 
+(which both appear to use a JSW2ish engine) are prefaced [CPC].</p>
+
+<p>The room layouts in Jet Set Willy I were composed of four
+elements:</p>
+
+<dl>
+<dt>Air</dt>
+
+<dd>Willy can walk or jump through it, but not stand on it.</dd>
+
+<dt>Water</dt>
+
+<dd>As Air, but Willy can also stand on it.</dd>
+
+<dt>Earth</dt>
+
+<dd>Willy can stand on it, but not walk or jump through it.</dd>
+
+<dt>Fire</dt>
+
+<dd>Willy loses a life if he touches this.</dd>
+</dl>
+
+<p>I have retained this system in describing JSW2, although ramps,
+conveyors and items are also "elements" now.</p>
+
+<h2><a id="2" name="2">2.Snapshot encryption</a></h2>
+
+<p>All information has been deduced from a snapshot of JSW2 taken
+while the title screen was showing and before a game had been
+started. JSW2 is encrypted, so .TAP files and snapshots taken
+before the title screen appeared will not match this pattern.</p>
+
+<p>[CPC] The formats used by CPC versions come from snapshots taken in a CPC 
+emulator in CPC464 mode. I have not made more than a cursory attempt to 
+reconcile them with the disc files (JET*.BIN) comprising CPC JSW.</p>
+
+<h2><a id="3" name="3">3. Room entries</a></h2>
+
+<p>JSW2 contains a table of 16-bit pointers to room entries:</p>
+
+<pre>
+TABLE: DW  ROOM0
+       DW  ROOM1
+       ...
+  
+</pre>
+<p><em>For JSW editor authors: This table is at BAFDh in JSW2. But you
+	are encouraged not to treat its address as permanent. It is
+	between two blocks of compressed data, so it may be useful to 
+	move it around as the number of rooms in the game increases or
+	decreased. Instead, find the address of this table from the word 
+	at 7E69h.</em></p>
+<p><em>Similarly, JSW2 has 134 entries in this table. But it's preferable
+	to calculate the number of rooms as (ROOM0 - TABLE) / 2, since 
+	there's no game-specific reason why there shouldn't be more or
+	fewer entries.</em></p>
+<p>[CPC] In the CPC version, this table is at 38B0h (JSW1) / 5C00h (JSW2).</p>
+
+<p>Each room entry is formed:</p>
+
+<pre>
++0  DW  RDATA   ;Address of room shape (Room shapes: <a href="#4">Section 4</a>)
+		;In JSW2, the room shapes are stored separately from the rooms,
+		;with their own compression system.
++2  DB  HBITS   ;High bits
+                ;These are combined with the next 8 bytes to form 9-bit
+                ;values. Bit 7 of this byte gives Bit 8 of U0;
+                ;    Bit 6 of this byte gives Bit 8 of U1;
+                ;        ...
+                ;        Bit 0 of this byte gives Bit 8 of U7.
++3  DB  U0      ;Cell pattern for Water (Cell patterns: <a
+href="#5">Section 5</a>)
++4  DB  U1      ;Cell pattern for Earth
++5  DB  U2      ;Cell pattern for Fire
++6  DB  U3      ;Cell pattern for "/" ramps
++7  DB  U4      ;Cell pattern for conveyor going left
++8  DB  U5      ;Cell pattern for item
++9  DB  U6      ;Cell pattern for "\" ramp
++A  DB  U7      ;Cell pattern for conveyor going right
+
+    ;[CPC] The CPC version has four additional bytes here. 
+    ;Presumably they control the palette registers, since different
+    ;rooms appear in different colours.
+
++B  DB  xname   ;Number of spaces to print before the room name 
+                ;(to position it centrally). This also contains
+                ;the border colour in bits 2-0.
++C  DB  name    ;Variable-length ASCII string, with bit 7 set on
+                ;the last character. Bytes 1-30 are expanded to
+                ;common words using a dictionary at 0FA81h, in the
+                ;same format as the keyword table in the Spectrum
+                ;ROM. Note that because bit 7 is set on the last character,
+                ;the last character is not in the range 1-30 and is not 
+                ;expanded. 
+                ; [CPC] The CPC versions do not appear to compress
+                ; room names.
+    DB  left    ;Exit left  }
+    DB  up      ;Exit up    } Room nos.
+    DB  right   ;Exit right }
+    DB  down    ;Exit down  }
+    DB  T4      ;Bit    7: Set if there is a rope in the room
+                ;Bit    6: Set to animate conveyor belt. Conveyors can only be
+                ;         animated if there is a single conveyor in the room.
+                ;         This is because the animation code assumes all 
+		;         conveyor cells in the room are contiguous, and draws 
+		;         one long animated strip starting at the first 
+                ;         conveyor cell in the room.
+                ;         
+                ;Bit    5: If conveyor belts are animated:
+                ;           0: Only the top row of the conveyor
+                ;              animates.
+                ;           1: The top and third rows animate. 
+                ;Bit    4: If set of T4 is set, byte T5 is present; 
+                ;          otherwise byte T5 is assumed to be 0.
+                ;Bits 0-3: Number of guardian records
+                ;          that follow. Numbers greater than 8 are
+                ;          treated as 0.
+
+(   DB  T5      ;Bits 0-5: <a href="#7">Special-case code ID</a>.
+            )   ;If bit 7 of this byte is set, arrows are present.
+
+    DS  7       ;<a href="#6">Guardian record</a> 0
+    DS  7       ;<a href="#6">Guardian record</a> 1
+    ...
+    DS  7       ;<a href="#6">Guardian record</a> {n}
+
+(   DB  AC      ;(if arrows present) No. of arrow records that follow 
+    DS  2       ;<a href="#6a">Arrow record</a> 1
+    DS  2       ;<a href="#6a">Arrow record</a> 2
+    ...
+    DS  2   )   ;<a href="#6a">Arrow record</a> {n}
+
+;
+;End of room
+;
+</pre>
+<p>JSW2 allows a total of eight guardians or arrows in each room.</p>
+
+<h2><a id="4" name="4">4. Room shape</a></h2>
+
+<p>The room shape is stored as a stream of bytes, each describing
+one or more character cells. The decompression code continues
+expanding until 512 cells been described. Cells are decompressed as
+horizontal sequences, starting at the top left corner.</p>
+
+<p>Each byte is either:</p>
+
+<ul>
+<li>Less than 90h: 
+
+<ul>
+<li>Bits 0-3 give (number of repetitions - 1)</li>
+
+<li>Bits 7-4 give the cell type (0-8): 
+
+<dl>
+<dt>0</dt>
+
+<dd>Air</dd>
+
+<dt>1</dt>
+
+<dd>Water</dd>
+
+<dt>2</dt>
+
+<dd>Earth</dd>
+
+<dt>3</dt>
+
+<dd>Fire</dd>
+
+<dt>4</dt>
+
+<dd>Ramp going northeast ("/")</dd>
+
+<dt>5</dt>
+
+<dd>Conveyor going left</dd>
+
+<dt>6</dt>
+
+<dd>Item. There can be at most 16 items per room. JSW2 doesn't have a global
+item table; it uses a table of 16-bit words for each room. Set bits in a 
+word correspond to untaken items.</dd>
+
+<dt>7</dt>
+
+<dd>Ramp going northwest ("\")</dd>
+
+<dt>8</dt>
+
+<dd>Conveyor going right</dd>
+</dl>
+</li>
+</ul>
+</li>
+
+<li>90h or more: Cell type is 0. Bits 7-0 give (number of
+repetitions + 7Fh).</li>
+</ul>
+
+<p>Special arrangements exist for Room 108, the Cartography Room.
+Water cells in this room map to rooms in other parts of the game; a
+table at 0FBE8h gives the mapping (it starts 74h, 75h, 76h; so the
+first water cell depends on room 74h, the second on room 75h, and
+the third on room 76h).</p>
+<p>[CPC] In CPC JSW1, this table is at 4CE5h. In CPC JSW2, this table is at 
+0A700h but does not appear to be populated in the snapshot I'm working from.</p>
+
+<h2><a id="5" name="5">5. 8x8 Cells</a></h2>
+
+<p>Cells have a 9-bit number (see <a href="#2">above</a>). To find
+the address of a cell, multiply this number by 9 and add 8C78h
+([CPC]: 0B60h for JSW1, 4C00h for JSW2). The cell is then formed: 
+one attribute byte, and 8 bitmap bytes.</p>
+
+<p>Bit 7 of the attribute byte means 'inverse' rather than 'flash'. The
+game startup code inverts any such cells and clears bit 7. All cells are 
+drawn in bright colours, so bit 6 (bright) may also have an alternative 
+meaning.</p>
+
+<p>[CPC] The attribute byte behaves differently:</p>
+<ul>
+	<li>Bits 0-1: Foreground colour 0-3</li>
+	<li>Bits 2-3: Background colour 0-3</li>
+	<li>Bits 4-7: Do not seem to be used</li>
+</ul>
+
+<h2><a id="6" name="6">6. Guardians</a></h2>
+
+<p>A compressed guardian record is 7 bytes (CG0-CG6):</p>
+
+<pre>
+  CG0:  } Limits of movement. When you first enter a room a counter is 
+  CG1:  } initialized with the value of CG0, this is decremented on each 
+          pass through the game loop. Each time the counter reaches 0 it 
+          is reloaded from CG1, the guardian's direction is reversed, and 
+          the process begins again.
+  CG2:  Low 8 bits of sprite number
+  CG3:  Primary movement step (8-bit signed integer). Doubling the movement 
+        step makes a sprite go twice as <b>far</b> as well as twice as 
+        <b>fast</b>, while reversing its direction swaps the limits of 
+        travel over. On horizontal sprites, this also affects the 
+        animation step.
+  CG4:  Bit    7 is bit 8 of sprite number.  
+        Bits 6-0 are initial X coordinate.
+  CG5:  Bit    7 is set if the guardian is unidirectional (cf: Megaron).
+        Bits 6-0 are initial Y coordinate.
+  CG6:  Bits 1-0 is animation mask. This is:
+             0: None
+             1: Frames 1,2     }
+             2: Frames 1,3     } (taking account of reversal, see bit 6)
+             3: Frames 1,2,3,4 }
+    Bits 3-2 give colour. This is 
+             0: White
+             1: Yellow
+             2: Cyan
+             3: Green
+                    (A 4-byte table at 70A9h gives these colours. For some
+                    reason, unidirectional guardians are always drawn in 
+                    white).
+    Bits 4-5 give secondary movement step. For horizontal/vertical 
+             guardians, this is 0. For a diagonal guardian, if bit 7 is 
+             set, this is the vertical step; otherwise, it's the 
+             horizontal step.
+    Bit 6    is set to swap between frames 0/1/2/3 and 4/5/6/7 when the
+             guardian reverses.
+    Bit 7    is set to move horizontally, clear to move vertically.
+         Combining it with bits 4 and 5 we have:
+                 
+                 Bit 7  Bit 5  Bit 4
+                 ==================================================
+                     0      0      0     Vertical
+                     0      0      1     45 degrees from horizontal
+                     0      1      0     22 degrees from horizontal
+                     1      1      1     18 degrees from horizontal
+                     1      0      0     Horizontal
+                     1      0      1     18 degrees from horizontal
+                     1      1      0     22 degrees from horizontal
+                     1      1      1     45 degrees from horizontal
+</pre>
+
+<p><a id="#6a" name="#6a">A compressed arrow record is 2 bytes</a>:</p>
+
+<pre>
+    DB  AB0 ;Arrow X position
+    DB  AB1 ;Bit    7 set if going left, else right.
+            ;Bits 6-0 are Y position
+ 
+</pre>
+
+JSW II decompresses arrows and guardians to 17-byte guardian records 
+(UG00-UG10). Here is how it does it: 
+
+<pre>
+  Byte  Meaning  How set
+  ====================================================================
+  UG00  Arrow    Address of arrow sprite - EB01h or EB21h. 
+  UG01  address           if (AB1 &amp; 80h) then EB01h, else EB21h.
+  UG02  counter (initialised to CG0)
+  UG03  counter reset value, set to CG1
+  UG04  X step   If arrow and bit 7 of AB1 is 1: 0FFh
+                 If arrow and bit 7 of AB1 is 0: 1
+                 If bit 7 of CG6 is 0:  = Bits 4 and 5 of CG6 (2ndary step)
+                 If bit 7 of CG6 is 1:  = CG3 (primary step)
+  UG05  X        If arrow, AB0
+                 else      CG4, bits 6-0 (0-7Fh)
+  UG06  Y step   If arrow, set to 0
+                 If bit 7 of CG6 is 0:   = CG3 (primary step)
+                 If bit 7 of CG6 is 1:  = Bits 4 and 5 of CG6 (2ndary step)
+  UG07  Y        If arrow: (AB1 &amp; 7Fh)
+         else       CG5, bits 6-0 (0-7Fh)
+  UG08  Styles   If arrow: 88h
+                 else (CG6 &amp; 0F3h)
+  UG09  Sprite   Address of sprite page. Given by ((CG2 | 2*(CG4 &amp; 80h)) 
+  UG0A  address                                    * 16) + 0D4A1h
+  UG0B  ?        Used for incremental calculation of sprite position
+  UG0C  ?        Used for incremental calculation of sprite position
+  UG0D  ?        Used for incremental calculation of sprite position
+  UG0E  Unidirectional
+                 If arrow: 0
+                 If bit 7 of CG5 is 1:  = 0FFh.
+                 If bit 7 of CG5 is 0:  = 0.
+                 If a guardian is unidirectional, and either UG04 (X step) is
+                 negative, or UG06 (Y step) is strictly positive, then the 
+                 guardian isn't drawn.
+  UG0F  ?        Character cell X-position of guardian
+  UG10  Attribute  (purpose of top bit unknown)
+         If arrow: 87h
+         If bit 7 of CG5 is 0:  loaded from 70A9 + ((CG6 &gt;&gt; 2)&amp; 3)
+                                        This array is {87h, C6h, C5h, C4h}
+         If bit 7 of CG5 is 1:  80h
+ 
+</pre>
+
+<h2><a id="7" name="7">7. Special-case code.</a></h2>
+
+<p>JSW2 has a table of special-case code at 8361h ([CPC]: 6BC1h for JSW1, 
+9BDAh for JSW2), which has two words for each ID. It starts at ID 1:</p>
+
+<pre>
+    dw  sc1a    ;For ID=1
+    dw  sc1b
+    dw  sc2a    ;For ID=2
+    dw  sc2b
+    ...         ;etc.
+   
+</pre>
+
+<p>The two routines appear to be an initialisation function and a
+function called once every time the game loop is run.</p>
+
+<p>A routine address can be 0 if only one of the two routines is
+being supplied.</p>
+
+<p>Special case code IDs are:</p>
+<ol>
+	<li>Central Cavern: If Willy has won, jump on the spot repeatedly.</li>
+	<li>Lift 1: Draw lifts using the 1st pair of lift definitions.</li>
+	<li>Lift 2: Draw lifts using the 2nd pair of lift definitions.</li>
+	<li>Lift 3: Draw lifts using the 3rd pair of lift definitions.</li>
+	<li>Lift 4: Draw lifts using the 4th pair of lift definitions.</li>
+	<li>The Trouble With Tribbles: Moving floor segments.</li>
+	<li>Is not used in Spectrum JSW2, and appears to have no effect.
+	[CPC] Doesn't seem to be used in CPC JSW either; curious.</li>
+	<li>Rocket Room. When Willy reaches particular coordinates, the 
+	central section of the room takes off and Willy is transported to 
+	the room above. </li>
+	<li>The Bathroom. Draws the toilet. If Willy hits it and the game is 
+	won, then move him to room 133 (Central Cavern). Also, make Willy run 
+	to the right if the game is won.</li>
+	<li>Master Bedroom. Removes Maria if 150 or more items have been 
+	collected. If Willy is standing on a right-moving conveyor (ie, the 
+	bed) then start him running to the right.</li>
+	<li>Beam Me Up/Down Spotty: Enables teleporters to be used in this 
+	room.</li>
+	<li>Belfry: Draws ropes above vertical guardians.</li>
+	<li>Eggoids: Makes diagonal guardians reverse when they hit the top or 
+	bottom of the screen.</li>
+	<li>The Yacht: Deals with the Yacht sailing away.</li>
+	<li>Trip Switch: Handles what happens when Willy touches the Trip 
+	Switch. The left conveyor graphic is used for the "off" switch, and 
+	the right conveyor for the "on" switch.</li>
+	<li>Rigor Mortis: If all items have been taken from room 75, sets the 
+	first two guardians in the room to have X steps of -1 and +1, and 
+	counter values of 28, respectively.</li>
+	<li>Crypt Switch. Adjusts the X step and counter of the first 
+	guardian in the room.</li>
+	<li>Foot Room. Puts a foot at the top of the room, which drops when
+	all items have been taken from room 103.</li>
+	<li>Lift 5: Draw lifts using the 6th pair of lift definitions.</li>
+	<li>First Landing: Make 'fire' cells flash. Also, make Willy run to 
+	the right if the game is won.</li>
+	<li>Lift 6: Draw lifts using the 7th pair of lift definitions. Also
+	makes fire cells flash.</li>
+	<li>Deserted Isle: Handle all the complicated behaviours of that 
+	complicated room. Allows teleporters to be used.</li>
+	<li>Macaroni Ted: Make Willy run to the right if the game is won.</li>
+	<li>Dumb Waiter: Draw lifts using the 5th pair of lift definitions. 
+	Also, make Willy run to the right if the game is won.</li>
+	<li>Highway to Hell: Moving floor segments. [CPC] CPC JSW does not 
+	use this entry; it appears to have no effect.</li>
+	<li>Is not used in Spectrum JSW2, and appears to have no effect.</li>
+</ol>
+<p>[CPC] In JSW1 for the CPC, most of these are set to zero since they refer to
+rooms in the JSW2 extended areas. Those that remain keep the same numbers.</p> 
+
+<h3>Lifts</h3>
+<p>This system is used to implement lifts. There is a table of lift 
+definitions (in <a href="#6">compressed guardian format</a>) at 0FB30h
+([CPC JSW2]: 7A28h). Lifts go around in pairs, like policemen; so the first two 
+lifts will be for one room, the next two for the next room, and so on.</p>
+<p>Each lift uses a guardian slot; so any room with lifts can only have up
+to six guardians.</p>
+
+<h2><a id="8" name="8">8. Teleporters</a></h2>
+
+<p>There are four teleporters in the game; you will find their
+definitions at 7435h ([CPC JSW2]: 9698h). A teleporter definition is 6 
+bytes long:</p>
+
+<pre>
+    DB  from    ;Room to teleport from
+    DB  x       ;X location within the room
+    DB  y       ;Y location within the room
+    DB  to      ;Room to teleport to, plus 1
+    DB  x       ;New X location 
+    DB  y       ;New Y location
+</pre>
+<p>Teleporters only work if the special-case number for the room is 11 or 22.
+</p>
+<h2><a id="9" name="9">9. The title screen</a></h2>
+<p>The title screen tune is from 0FC69h to 0FCCCh, terminated with 0FFh.
+It is in the same format as the
+<a href="http://www.geocities.com/andrewbroad/spectrum/willy/music.html">JSW1
+	title screen music</a>.</p>
+
+<p>The title screen itself lives between 0FCCDh and 0FE72h, terminated with 
+0FFh. Each byte corresponds to one character cell, with the first one at 
+x=18, y=2; the next is drawn at x=19, y=2, and so on. A byte has the following 
+meaning:</p>
+<ul>
+	<li>If bit 7 is set: Draw slope. Bit 6 is 0 for a / slope, 
+	1 for a \ slope.</li>
+	<li>If bit 7 is not set: Leave cell blank.</li>
+	<li>Always: Bits 2-0 give ink, bits 5-3 give paper. Bright is always 
+	on. Flash is always off, with one exception: If ink=6 and paper=6, 
+	you instead get flashing magenta on yellow. This attribute can be
+	found at 0FECDh.</li>
+</ul>
+
+<p>The four 'slope' graphics live from 0FE73h to 0FE92h. Each is an 8x8
+graphic in UDG format. The first two are for a / slope, and the second two 
+for a \ slope.</p>
+
+<h2><a id="10" name="10">10. The in-game tune</a></h2>
+
+<p>The in-game tune lives at 0FAF0h and is exactly 64 bytes long. It's in
+the same format as the Manic Miner / JSW1 
+<a href="http://www.geocities.com/andrewbroad/spectrum/willy/music.html">
+	in-game music</a>.</p>
+
+<img src="../Images/zx-hline3.png"
+alt="_____________________________________________________________________"
+ width="100%" height="4" />
+<p></p>
+
+<address><a href="mailto:jce@seasip.demon.co.uk">John
+Elliott</a></address>
+
+6-12-2005. 
+
+<p>Thanks also to: <a href="mailto:AndyCadley@Bigfoot.com">Andrew
+Cadley</a>.</p>
+</div>
+</body>
+</html>
+
