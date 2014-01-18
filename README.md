@@ -93,6 +93,11 @@ https://github.com/kikito/middleclass) with a small tweak to allow showing class
 data members when using ZeroBrane Studio (http://studio.zerobrane.com) and 
 strict.lua to protect against accidentally defining global variables.
 
+More info
+---------
+Web page: http://robprobin.com/pmwiki.php?n=Main.JSW2AnimatedMap
+Blog post: http://zedcode.blogspot.co.uk/2014/01/jet-set-willy-2-animated-map.html
+
 
 You can contact me by emailing rob -dot- probin -at- gmail -dot- com.
 Last Updated: 18Jan2014
